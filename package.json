@@ -1,0 +1,8 @@
+{
+  "name": "blacksheep-store",
+  "version": "1.0.0",
+  "description": "Blacksheep online store: static front end plus Express API",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": { "express": "^4.19.2" }
+}

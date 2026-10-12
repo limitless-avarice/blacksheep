@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BLACKSHEEP | Not one of them</title>
+<meta name="description" content="Blacksheep. Heavyweight limited tees. Not one of them.">
+<link rel="icon" href="img/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <a class="skip" href="#shop">Skip to shop</a>
+  <div class="top-side"></div>
+  <a class="brand" href="#" aria-label="Blacksheep home"><img src="img/logo.png" alt="" width="64" height="64"><span>BLACKSHEEP</span></a>
+  <div class="top-side right"><button class="cart-btn" id="openCart" aria-label="Open cart">Cart <b id="cartCount">0</b></button></div>
+</header>
+
+<section class="hero" aria-label="Featured">
+  <img src="img/packaging.jpg" alt="Blacksheep box, bag, tags and thank you card">
+  <div class="hero-text">
+    <p class="hero-kicker">Limited editions, numbered out of 500</p>
+    <h1>NOT ONE OF THEM</h1>
+    <a class="btn" href="#shop">Shop the drop</a>
+  </div>
+</section>
+
+<main id="shop">
+  <div class="collections">
+    <label for="collection" class="sr">Explore collections</label>
+    <select id="collection"></select>
+  </div>
+  <div class="bar">
+    <button class="link" id="filterBtn" aria-expanded="false" aria-controls="filters">Filter</button>
+    <div class="bar-right">
+      <span id="count">0 items</span>
+      <label class="sr" for="sort">Sort</label>
+      <select id="sort" class="plain"><option value="">Sort</option><option value="price-asc">Price, low to high</option><option value="price-desc">Price, high to low</option></select>
+      <button class="view on" data-cols="5" aria-label="Large grid" title="Large grid"><i></i><i></i><i></i><i></i></button>
+      <button class="view" data-cols="8" aria-label="Small grid" title="Small grid"><span class="dots"></span></button>
+    </div>
+  </div>
+  <div id="filters" class="filters" hidden>
+    <input id="search" type="search" placeholder="Search products">
+    <label><input type="checkbox" id="onlyLimited"> Limited editions only</label>
+  </div>
+  <div id="grid" class="grid" aria-live="polite"></div>
+  <p id="empty" class="empty" hidden>Nothing matches. Clear the filter or search to see all products.</p>
+</main>
+
+<section class="story">
+  <img src="img/logo.png" alt="Blacksheep logo" width="140" height="140">
+  <p>You are not just wearing clothes. You are part of a different mindset. A smaller group. A higher standard.</p>
+</section>
+
+<footer>
+  <form id="newsletter" class="news">
+    <label for="email">Get the next drop first</label>
+    <div><input id="email" type="email" placeholder="Email address" required><button class="btn" type="submit">Subscribe</button></div>
+    <p id="newsMsg" role="status"></p>
+  </form>
+  <p class="fine">&copy; <span id="year"></span> Blacksheep. Not one of them.</p>
+</footer>
+
+<a class="chat" href="https://wa.me/233000000000" target="_blank" rel="noopener">Chat</a>
+
+<div class="scrim" id="scrim" hidden></div>
+
+<aside class="drawer" id="cartDrawer" aria-label="Cart" hidden>
+  <div class="drawer-head"><h2>Cart</h2><button class="x" data-close aria-label="Close cart">&times;</button></div>
+  <div id="cartBody"></div>
+</aside>
+
+<div class="modal" id="productModal" role="dialog" aria-modal="true" aria-label="Product" hidden>
+  <div class="modal-box"><button class="x" data-close aria-label="Close">&times;</button><div id="modalBody"></div></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
