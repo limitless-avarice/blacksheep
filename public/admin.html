@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Blacksheep admin</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font:15px/1.45 Arial,sans-serif;background:#141414;color:#f2f2f2}
+button,input,select{font:inherit}a{color:#ff6b6b}
+header{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid #333;position:sticky;top:0;background:#141414;z-index:5}
+header h1{font-size:18px;margin:0;letter-spacing:.1em}
+nav{display:flex;gap:6px;flex:1}
+.tab{background:none;border:1px solid #333;color:#f2f2f2;padding:8px 14px;cursor:pointer}.tab.on{background:#e10d0d;border-color:#e10d0d}
+.btn{background:#e10d0d;color:#fff;border:0;padding:9px 16px;cursor:pointer;font-weight:600}.btn.ghost{background:none;border:1px solid #444}
+main{padding:20px;max-width:1000px;margin:0 auto}
+input,select{background:#1c1c1c;color:#f2f2f2;border:1px solid #444;padding:8px 10px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.card{background:#1c1c1c;border:1px solid #333;padding:14px 16px;margin-bottom:12px}
+.card.warn{border-color:#ffb44d}
+.top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.badge{padding:2px 10px;background:#333;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.badge.paid,.badge.shipped,.badge.delivered{background:#1d5c2a}.badge.cancelled{background:#7a1010}
+.muted{color:#9a9a9a}.row{display:flex;justify-content:space-between;gap:10px}
+.err{color:#ff6b6b}
+#login{max-width:340px;margin:12vh auto;padding:20px}
+#login input{width:100%;margin:8px 0}
+.sizes{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.sizes label{display:grid;gap:4px;font-size:13px}.sizes input{width:80px}
+#msg{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#fff;color:#000;padding:10px 18px;display:none;z-index:9}
+@media(max-width:640px){header{padding:10px 12px}nav{order:3;width:100%;flex:none}main{padding:12px}.sizes input{width:70px}.row{flex-direction:column;gap:2px}input,select{font-size:16px}#fSearch{width:100%}}
+</style>
+</head>
+<body>
+<div id="login">
+  <h1>Blacksheep admin</h1>
+  <form id="lf"><label for="tok">Admin token</label><input id="tok" type="password" autocomplete="current-password">
+  <p class="err" id="lerr"></p><button class="btn" type="submit">Sign in</button></form>
+</div>
+
+<div id="app" hidden>
+  <header><h1>BLACKSHEEP ADMIN</h1>
+    <nav><button class="tab on" data-tab="orders">Orders</button><button class="tab" data-tab="stock">Stock</button><button class="tab" data-tab="subs">Subscribers</button></nav>
+    <button class="btn ghost" id="refresh">Refresh</button><button class="btn ghost" id="out">Sign out</button></header>
+  <main>
+    <section id="orders">
+      <div class="bar"><select id="fStatus"><option value="">All statuses</option><option>pending</option><option>paid</option><option>shipped</option><option>delivered</option><option>cancelled</option></select>
+      <select id="fPay"><option value="">Paid and unpaid</option><option value="paid">Paid</option><option value="unpaid">Not paid yet</option></select><label class="muted">Delivery day <input id="fDate" type="date"></label><input id="fSearch" type="search" placeholder="Search name, phone or order number"><span class="muted" id="oCount"></span></div>
+      <div id="oList"></div>
+    </section>
+    <section id="stock" hidden><div id="sList"></div></section>
+    <section id="subs" hidden><div class="bar"><button class="btn" id="copySubs">Copy all emails</button><span class="muted" id="subCount"></span></div><div id="subList"></div></section>
+  </main>
+</div>
+<div id="msg" role="status"></div>
+
+<script>
+const $=(s,e=document)=>e.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>'GH\u20B5'+Number(n).toFixed(2);
+let token=sessionStorage.getItem('bs-admin')||'',orders=[],subs=[],tab='orders';
+
+function say(m){const el=$('#msg');el.textContent=m;el.style.display='block';clearTimeout(say.t);say.t=setTimeout(()=>el.style.display='none',3500)}
+async function api(path,opt={}){
+  let r;
+  try{r=await fetch('/api/admin'+path,{...opt,headers:{'Content-Type':'application/json','x-admin-token':token}})}
+  catch{throw new Error('Cannot reach the server. Check your connection.')}
+  const d=await r.json().catch(()=>({}));
+  if(r.status===401){logout('Wrong or expired token.');throw new Error('Unauthorised')}
+  if(r.status===429)throw new Error(d.error||'Too many requests. Wait a minute.');
+  if(!r.ok)throw new Error(d.error||'Request failed');
+  return d;
+}
+function logout(m){sessionStorage.removeItem('bs-admin');token='';$('#app').hidden=true;$('#login').hidden=false;$('#lerr').textContent=m||''}
+function toWa(p){const d=String(p).replace(/\D/g,'');return d[0]==='0'?'233'+d.slice(1):d}
+
+$('#lf').addEventListener('submit',async e=>{
+  e.preventDefault();token=$('#tok').value.trim();if(!token){$('#lerr').textContent='Enter your admin token.';return}
+  try{await api('/orders');sessionStorage.setItem('bs-admin',token);start()}catch(x){if(x.message!=='Unauthorised')$('#lerr').textContent=x.message}
+});
+$('#out').onclick=()=>logout('');
+$('#refresh').onclick=()=>load();
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));['orders','stock','subs'].forEach(s=>$('#'+s).hidden=s!==tab);load()});
+
+function start(){$('#login').hidden=true;$('#app').hidden=false;load()}
+async function load(){
+  try{
+    if(tab==='orders'){orders=await api('/orders');renderOrders()}
+    if(tab==='stock')renderStock(await api('/stock'));
+    if(tab==='subs'){subs=await api('/subscribers');renderSubs()}
+  }catch(x){if(x.message!=='Unauthorised')say(x.message)}
+}
+
+function renderOrders(){
+  const st=$('#fStatus').value,pay=$('#fPay').value,dd=$('#fDate').value,q=$('#fSearch').value.trim().toLowerCase();
+  const list=orders.filter(o=>(!st||o.status===st)&&(!pay||o.paymentStatus===pay)&&(!dd||(o.schedule&&o.schedule.date===dd))&&(!q||(o.id+o.customer.name+o.customer.phone).toLowerCase().includes(q)));
+  $('#oCount').textContent=list.length+' of '+orders.length+' orders';
+  $('#oList').innerHTML=list.length?list.map(o=>`
+    <div class="card ${o.note&&/paid after/i.test(o.note)?'warn':''}">
+      <div class="top"><strong>${esc(o.id)}</strong><span class="muted">${new Date(o.createdAt).toLocaleString('en-GB')}</span><span class="badge ${esc(o.status)}">${esc(o.status)}</span></div>
+      <p><strong>${esc(o.customer.name)}</strong> &middot; ${esc(o.customer.phone)} &middot; <a href="https://wa.me/${toWa(o.customer.phone)}" target="_blank" rel="noopener">WhatsApp</a>${o.customer.email?' &middot; '+esc(o.customer.email):''}<br>
+      <span class="muted">${esc(o.customer.address)}, ${esc(o.customer.city)}${o.customer.region?', '+esc(o.customer.region):''}</span><br>
+      ${o.schedule?`<strong>Deliver ${esc(new Date(o.schedule.date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'}))}, ${esc(o.schedule.slot)}</strong>`:''}</p>
+      ${o.items.map(l=>`<div class="row"><span>${esc(l.name)} (${esc(l.size)}) x${l.qty}</span><span>${money(l.price*l.qty)}</span></div>`).join('')}
+      <div class="row muted"><span>Delivery${o.promo?' &middot; code '+esc(o.promo):''}</span><span>${money(o.delivery||0)}${o.discount?' / -'+money(o.discount):''}</span></div>
+      <div class="row"><strong>Total ${money(o.total)}</strong><span>${o.paymentMethod==='online'?'Online':'Pay on delivery'} &middot; ${o.paymentStatus==='paid'?'PAID':'unpaid'}</span></div>
+      ${o.note?`<p class="err">${esc(o.note)}</p>`:''}
+      <div class="bar" style="margin:10px 0 0"><select data-status="${esc(o.id)}">${['pending','paid','shipped','delivered','cancelled'].map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></div>
+    </div>`).join(''):'<p class="muted">No orders match.</p>';
+}
+$('#fStatus').onchange=renderOrders;$('#fPay').onchange=renderOrders;$('#fDate').onchange=renderOrders;$('#fSearch').oninput=renderOrders;
+$('#oList').addEventListener('change',async e=>{
+  const id=e.target.dataset.status;if(!id)return;
+  if(e.target.value==='cancelled'&&!confirm('Cancel this order and put the items back in stock? This cannot be undone.')){renderOrders();return}
+  try{await api('/orders/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status:e.target.value})});say('Order updated');load()}
+  catch(x){say(x.message);load()}
+});
+
+function renderStock(list){
+  $('#sList').innerHTML=list.map(p=>`<div class="card"><strong>${esc(p.name)}</strong>
+    <div class="sizes">${Object.entries(p.stock).map(([s,n])=>`<label>${esc(s)}<input type="number" min="0" step="1" value="${n}" data-size="${esc(s)}"></label>`).join('')}</div>
+    <button class="btn" data-save="${esc(p.id)}">Save stock</button></div>`).join('');
+}
+$('#sList').addEventListener('click',async e=>{
+  const id=e.target.dataset.save;if(!id)return;
+  const stock={};e.target.parentElement.querySelectorAll('input').forEach(i=>stock[i.dataset.size]=i.value);
+  try{await api('/stock/'+encodeURIComponent(id),{method:'PUT',body:JSON.stringify({stock})});say('Stock saved')}catch(x){say(x.message)}
+});
+
+function renderSubs(){
+  $('#subCount').textContent=subs.length+' subscribers';
+  $('#subList').innerHTML=subs.length?subs.map(s=>`<div class="card">${esc(s)}</div>`).join(''):'<p class="muted">No subscribers yet.</p>';
+}
+$('#copySubs').onclick=async()=>{try{await navigator.clipboard.writeText(subs.join(', '));say('Copied '+subs.length+' emails')}catch{say('Could not copy. Select the emails by hand.')}};
+
+if(token)api('/orders').then(start).catch(()=>{});
+setInterval(()=>{if(!$('#app').hidden&&tab==='orders'&&!document.activeElement.matches('select,input,textarea'))load()},60000);
+</script>
+</body>
+</html>

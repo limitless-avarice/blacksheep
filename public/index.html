@@ -2,18 +2,34 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>BLACKSHEEP | Not one of them</title>
 <meta name="description" content="Blacksheep. Heavyweight limited tees. Not one of them.">
+<meta name="theme-color" content="#141414">
+<!-- Replace YOURDOMAIN.com with your real domain so links look right on WhatsApp and Instagram -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="BLACKSHEEP | Not one of them">
+<meta property="og:description" content="Heavyweight limited tees, numbered out of 500.">
+<meta property="og:image" content="https://YOURDOMAIN.com/img/packaging.jpg">
+<meta property="og:url" content="https://YOURDOMAIN.com/">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="img/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<!-- Analytics (optional). Uncomment and set your domain to use Plausible:
+<script defer data-domain="YOURDOMAIN.com" src="https://plausible.io/js/script.js"></script> -->
 </head>
 <body>
+<div class="net" id="netBanner" role="status" hidden>You are offline. Your cart is saved. Orders will work again when you reconnect.</div>
+<div class="dropbar" id="dropBar" hidden>Next drop in <b id="dropTime"></b></div>
+
 <header class="top">
   <a class="skip" href="#shop">Skip to shop</a>
-  <div class="top-side"></div>
+  <div class="top-side">
+    <button class="hlink" type="button" data-open="#trackModal">Track order</button>
+    <button class="hlink" type="button" id="openSaved" aria-pressed="false">Saved <b id="wishCount">0</b></button>
+  </div>
   <a class="brand" href="#" aria-label="Blacksheep home"><img src="img/logo.png" alt="" width="64" height="64"><span>BLACKSHEEP</span></a>
   <div class="top-side right"><button class="cart-btn" id="openCart" aria-label="Open cart">Cart <b id="cartCount">0</b></button></div>
 </header>
@@ -43,11 +59,20 @@
     </div>
   </div>
   <div id="filters" class="filters" hidden>
-    <input id="search" type="search" placeholder="Search products">
+    <input id="search" type="search" placeholder="Search products" aria-label="Search products">
     <label><input type="checkbox" id="onlyLimited"> Limited editions only</label>
   </div>
   <div id="grid" class="grid" aria-live="polite"></div>
-  <p id="empty" class="empty" hidden>Nothing matches. Clear the filter or search to see all products.</p>
+  <div id="loadErr" class="loaderr" role="alert" hidden>
+    <p>We could not load the products. Check your internet connection and try again.</p>
+    <button class="btn" type="button" data-retry>Try again</button>
+  </div>
+  <div id="empty" class="empty" hidden><p id="emptyMsg"></p><button class="link" type="button" data-clear>Show all products</button></div>
+
+  <section id="recent" class="recent" hidden>
+    <h2>Recently viewed</h2>
+    <div id="recentGrid" class="grid mini"></div>
+  </section>
 </main>
 
 <section class="story">
@@ -56,16 +81,23 @@
 </section>
 
 <footer>
-  <form id="newsletter" class="news">
+  <form id="newsletter" class="news" novalidate>
     <label for="email">Get the next drop first</label>
-    <div><input id="email" type="email" placeholder="Email address" required><button class="btn" type="submit">Subscribe</button></div>
+    <div><input id="email" type="email" placeholder="Email address" autocomplete="email"><button class="btn" type="submit">Subscribe</button></div>
     <p id="newsMsg" role="status"></p>
   </form>
+  <nav class="flinks" aria-label="Help">
+    <a href="policy.html#delivery">Delivery and returns</a>
+    <a href="policy.html#privacy">Privacy</a>
+    <a href="policy.html#terms">Terms</a>
+    <button type="button" class="link" data-open="#trackModal">Track an order</button>
+  </nav>
+  <div id="socials" class="socials"></div>
   <p class="fine">&copy; <span id="year"></span> Blacksheep. Not one of them.</p>
 </footer>
 
-<a class="chat" href="https://wa.me/233000000000" target="_blank" rel="noopener">Chat</a>
-
+<a class="chat" id="chat" href="#" target="_blank" rel="noopener" hidden>Chat</a>
+<div class="toasts" id="toasts" aria-live="polite"></div>
 <div class="scrim" id="scrim" hidden></div>
 
 <aside class="drawer" id="cartDrawer" aria-label="Cart" hidden>
@@ -76,6 +108,37 @@
 <div class="modal" id="productModal" role="dialog" aria-modal="true" aria-label="Product" hidden>
   <div class="modal-box"><button class="x" data-close aria-label="Close">&times;</button><div id="modalBody"></div></div>
 </div>
+
+<div class="modal" id="trackModal" role="dialog" aria-modal="true" aria-label="Track your order" hidden>
+  <div class="modal-box narrow">
+    <button class="x" data-close aria-label="Close">&times;</button>
+    <h2>Track your order</h2>
+    <form class="form" id="trackForm" novalidate>
+      <label for="t-id">Order number</label>
+      <input id="t-id" placeholder="BS-1A2B3C" autocapitalize="characters" autocomplete="off">
+      <p class="ferr" id="e-t-id" role="alert"></p>
+      <label for="t-phone">Phone number used at checkout</label>
+      <input id="t-phone" type="tel" inputmode="tel" autocomplete="tel">
+      <p class="ferr" id="e-t-phone" role="alert"></p>
+      <button class="btn block" type="submit" id="trackBtn">Track order</button>
+    </form>
+    <div id="trackResult" aria-live="polite"></div>
+  </div>
+</div>
+
+<!-- Size guide shown inside each product. Edit these numbers to match your real garments (centimetres, laid flat). -->
+<template id="sizeGuideTpl">
+  <table class="sg">
+    <thead><tr><th>Size</th><th>Chest</th><th>Length</th></tr></thead>
+    <tbody>
+      <tr><td>S</td><td>57 cm</td><td>70 cm</td></tr>
+      <tr><td>M</td><td>59 cm</td><td>72 cm</td></tr>
+      <tr><td>L</td><td>61 cm</td><td>74 cm</td></tr>
+      <tr><td>XL</td><td>63 cm</td><td>76 cm</td></tr>
+    </tbody>
+  </table>
+  <p class="hint">Oversized fit. For a closer fit, choose one size down.</p>
+</template>
 
 <script src="app.js"></script>
 </body>
